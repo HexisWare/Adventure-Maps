@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Example Tool">
+  <wpt lat="37.421999" lon="-122.084057">
+    <name>First Point</name>
+  </wpt>
+  <wpt lat="37.422245" lon="-122.084448">
+    <name>Second Point</name>
+  </wpt>
+</gpx>

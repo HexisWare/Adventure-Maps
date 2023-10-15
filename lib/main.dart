@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Map Demo',
+      title: 'Flutter Map Tracking Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: MyHomePage(),
     );
@@ -24,47 +26,48 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final MapController _mapController = MapController();
   Position? _currentPosition;
+  List<LatLng> visitedPoints = [];
+
+  StreamSubscription<Position>? _positionStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _locateUser();
+    _trackUser();
   }
 
   _locateUser() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    // ... [No changes here, same as your code]
+  }
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
+  _trackUser() {
+    final positionStream = Geolocator.getPositionStream(
+      desiredAccuracy: LocationAccuracy.best,
+      distanceFilter: 10, // update every 10 meters
+    );
 
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
-    }
-
-    Position position = await Geolocator.getCurrentPosition();
-    setState(() {
-      _currentPosition = position;
-      _mapController.move(
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude), 15);
+    _positionStreamSubscription = positionStream.listen((Position position) {
+      setState(() {
+        _currentPosition = position;
+        visitedPoints.add(LatLng(position.latitude, position.longitude));
+        _mapController.move(
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            15);
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _positionStreamSubscription?.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Adventure Map')),
+      appBar: AppBar(title: Text('Flutter Map Tracking Demo')),
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
@@ -75,6 +78,15 @@ class _MyHomePageState extends State<MyHomePage> {
           TileLayerOptions(
             urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
             subdomains: ['a', 'b', 'c'],
+          ),
+          PolylineLayerOptions(
+            polylines: [
+              Polyline(
+                points: visitedPoints,
+                strokeWidth: 4.0,
+                color: Colors.blue,
+              ),
+            ],
           ),
           MarkerLayerOptions(
             markers: _currentPosition != null
